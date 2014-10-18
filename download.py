@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 import requests
-import json
-from StringIO import StringIO
 from PIL import Image
-from PyPDF2 import PdfFileMerger, parse_filename_page_ranges
+from PyPDF2 import PdfFileMerger
+from StringIO import StringIO
 
 
 def main():
