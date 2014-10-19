@@ -1,42 +1,62 @@
 #!/usr/bin/env python
 # coding: utf-8
+import click
+import re
 import requests
 from PIL import Image
 from PyPDF2 import PdfFileMerger
 from StringIO import StringIO
 
+@click.command()
+@click.option('--first-image-url',
+              prompt='URL to the first page image.')
+@click.option('--output-name',
+              prompt='The file name where to save the PDF.',
+              default='output.pdf')
+def saada_to_pdf(first_image_url, output_name):
+  print 'Analyzing: {}'.format(repr(first_image_url))
 
-def main():
-  url_template = 'http://s3.amazonaws.com/saada-online/objects/2012-08/item-ih-1921-05-{page}.jpg'
-  page = 1
-  image_files = []
+  match = re.match(r'(?P<base>.*)-001\.(?P<extension>.*)$', first_image_url)
+  if not match:
+    raise Exception('Invalid URL structure: {}'.format(repr(first_image_url)))
+
+  #url_template = 'http://s3.amazonaws.com/saada-online/objects/2012-08/item-ih-1921-05-{page}.jpg'
+  match_dict = match.groupdict()
+  url_template = '%s-{page}.%s' % (match_dict['base'], match_dict['extension'])
+  pdfs = []
+  page = 0
   while True:
-    page_str = str(page).zfill(3)
+    page += 1
+    page_str = str(page).zfill(3) # Changes 1 to '001', 18 to '018'.
     page_request = requests.get(url_template.format(page=page_str), stream=True)
-
     if page_request.status_code != 200:
-      print 'exiting due to status code', page_request.status_code
+      print 'Reached the last page of content.'
       break
 
-    filename = 'page_{}.jpg'.format(page_str)
+    # Save the page contents as an in-memory image.
     fd_in = StringIO()
-    fd_out = StringIO()
     for chunk in page_request.iter_content(1024):
       fd_in.write(chunk)
-    print 'saved file: {}'.format(filename)
+
+    # Load the content image into PIL for transformation to PDF.
     fd_in.seek(0)
     image = Image.open(fd_in)
+
+    # Save the image to an in-memory PDF file.
+    fd_out = StringIO()
     image.save(fd_out, format='PDF')
     fd_out.seek(0) # Return to the 0th byte so that it can be read.
-    image_files.append(fd_out)
-    page += 1
 
+    # Add this pdf of content to the list of pdfs to be merged.
+    pdfs.append(fd_out)
+
+  # Merge the in-memory PDFs to a single output PDF on disk.
   merger = PdfFileMerger()
-  for i, pdf_fd in enumerate(image_files):
-    merger.append(pdf_fd) # TODO(peter): pages=page_range?
-  out_pdf = open('output.pdf', 'wb')
-  merger.write(out_pdf)
+  map(merger.append, pdfs)
+  with open(output_name, 'wb') as output_fd:
+    merger.write(output_fd)
 
+  print 'Wrote {} pages of content to PDF: {}'.format(page - 1, output_name)
 
 if __name__ == '__main__':
-  main()
+  saada_to_pdf()
