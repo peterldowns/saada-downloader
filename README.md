@@ -41,7 +41,7 @@ You can get this URL like so:
 ### The output file's name
 
 This should be a filename ending in `.pdf`, the name of a new PDF file to be
-created. The default is `output.pdf`.
+created. The default is `output.pdf`. Type it in and press enter.
 
 You can run the script again the same way as the first time:
 ```bash
