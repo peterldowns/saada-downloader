@@ -1,3 +1,4 @@
+click==3.3
 Pillow==2.6.1
 PyPDF2==1.23
 requests==2.2.1
